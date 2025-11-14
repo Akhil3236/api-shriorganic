@@ -1,9 +1,11 @@
 import  express from "express";
-import { getallusers } from "../controllers/useControlles.js";
+import {getUserById, getusers} from "../controllers/useControlles.js"
+
 
 const router=express.Router();
 
-router.get("/alluser",getallusers)
+router.get("/",getusers);
+router.get("/:userId",getUserById);
 
 export default router;
 

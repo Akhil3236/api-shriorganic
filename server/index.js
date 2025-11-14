@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import userRoutes from "../server/routes/userRoutes.js"
 import userAuthRouters from "../server/routes/userAuthRouters.js"
-
+import { connectDB } from "./config/db.js";
 
 
 dotenv.config();
@@ -55,8 +55,16 @@ app.get("/", (req, res) => {
     })
 });
 
+
 /*-----------------------------------
-            Server route
+connecting the database
+----------------------------------- */
+
+connectDB();
+
+
+/*-----------------------------------
+ Server route
 ----------------------------------- */
   
 app.use("/api/user",userRoutes);
