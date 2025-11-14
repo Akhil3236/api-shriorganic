@@ -1,19 +1,53 @@
+import { User } from "../models/userModel.js";
+import bcrypt, { hash } from 'bcrypt';
+import jwt from "jsonwebtoken";
 
 
 /*--------------------------------
         1) user sign in page
 ---------------------------------*/
-export const signin=async (req,res) => {
-    
-    const {email,password}=req.body;
+export const signin = async (req, res) => {
 
-    // take the get the data of the user by using the email 
-    // check the password with encrypted password
+    try {
+        
+        const { Email, Password } = req.body;
+        const user = await User.find({ Email: Email });
 
-    res.status(200).json({
-        success:true,
-        message:"Login sucessFull",
-    })
+        if (!user || user.length === 0) {
+        return res.status(404).json({
+            success: false,
+            message: "User not found!"
+        });
+        }
+        const hashedPassword = user[0].Password;
+        const isMatch = await bcrypt.compare(Password, hashedPassword);
+
+        if (!isMatch) {
+        return res.status(401).json({
+            success: false,
+            message: "Password incorrect!"
+        });
+        }
+        // else{
+
+            const payload={
+                _id:user._id,
+                Email:user.Email,
+            }
+            const token=jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
+            return res.status(200).json({
+                success: true,
+                message: "sigin successful",
+                token:token
+            });
+        // }
+    } catch (error) {        
+        res.status(400).json({
+            success:false,
+            message:"signin failed",
+            error:error
+        })
+    }
 }
 
 
@@ -21,31 +55,54 @@ export const signin=async (req,res) => {
        2) user sign up page
 ---------------------------------*/
 
-export const signup=async (req,res) => {
+export const signup = async (req, res) => {
 
-    const {FirstName,LastName,PhoneNumber,Email,Password}=req.body;
-
-    if(!FirstName || !LastName || !PhoneNumber || !Email || !Password){
-
+    try {    
+    const { FirstName, LastName, PhoneNumber, Email, Password } = req.body;
+    if (!FirstName || !LastName || !PhoneNumber || !Email || !Password) {
         return res.status(400).json({
-            success:false,
+            success: false,
             message: "Required data is missing."
         });
     }
+    const existingUser = await User.findOne({
+        $or: [{ Email: Email.toLowerCase() }, { PhoneNumber }],
+    });
+    const salt=Number(process.env.saltRounds);
+    const encryptedpassword=await bcrypt.hash(Password,salt);
 
-
-    const userdata={
-        FirstName:FirstName,
-        LastName:LastName,
-        PhoneNumber:PhoneNumber,
-        Email:Email,
-        Password:Password
+    const userdata = {
+        FirstName: FirstName,
+        LastName: LastName,
+        PhoneNumber: PhoneNumber,
+        Email: Email,
+        Password: encryptedpassword
     }
 
+    if(existingUser){
+        res.status(401).json({
+            success:false,
+            message:"user already exists with email or number !"
+        })
+    }
+    else{
+        const newUser=new User(
+            userdata
+        )
+        await newUser.save();
+    }
     res.status(200).json({
-        success:true,
-        message:"sign-up sucessfull !",
-        data:userdata
+        success: true,
+        message: "sign-up sucessfull !",
+    })
+} catch (error) {
+    res.status(400).json({
+        success:false,
+        message:"error",
+        error:error
     })
 }
+}
+
+
 
