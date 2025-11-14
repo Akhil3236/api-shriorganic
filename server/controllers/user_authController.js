@@ -35,7 +35,6 @@ export const signin = async (req, res) => {
                 Email:user.Email,
             }
             const token=jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
-
             return res.status(200).json({
                 success: true,
                 message: "sigin successful",
