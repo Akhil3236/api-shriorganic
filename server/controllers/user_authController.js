@@ -1,5 +1,6 @@
 import { User } from "../models/userModel.js";
 import bcrypt, { hash } from 'bcrypt';
+import jwt from "jsonwebtoken";
 
 
 /*--------------------------------
@@ -27,12 +28,20 @@ export const signin = async (req, res) => {
             message: "Password incorrect!"
         });
         }
-        else{
+        // else{
+
+            const payload={
+                _id:user._id,
+                Email:user.Email,
+            }
+            const token=jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
+
             return res.status(200).json({
                 success: true,
-                message: "sigin successful"
+                message: "sigin successful",
+                token:token
             });
-        }
+        // }
     } catch (error) {        
         res.status(400).json({
             success:false,
