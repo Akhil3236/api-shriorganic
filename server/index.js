@@ -50,7 +50,7 @@ app.get("/", (req, res) => {
 
   res.status(200).json({
     sucess: true,
-    message: "Hello from the server , server is working"
+    message: "Hello from the server , server is working, and added in the server"
   })
 });
 
