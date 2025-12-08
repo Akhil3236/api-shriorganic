@@ -50,7 +50,7 @@ app.get("/", (req, res) => {
 
   res.status(200).json({
     sucess: true,
-    message: "Hello from the server , server is working, and added in the server"
+    message: "Hello from the server , server is working "
   })
 });
 
@@ -72,4 +72,4 @@ app.listen(PORT, () => {
 });
 
 
-console.log("New deployment is working!");
+
