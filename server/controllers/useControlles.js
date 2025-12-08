@@ -2,7 +2,6 @@ import { User } from "../models/userModel.js";
 
 
 
-
 // To Get The all the users in admin side
 export const getusers=async(req,res)=>{
     try {
