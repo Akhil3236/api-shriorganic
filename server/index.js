@@ -70,3 +70,6 @@ app.use("/api/product", productRoutes);
 app.listen(PORT, () => {
   console.log(`Server is running on ${PORT}`);
 });
+
+
+console.log("New deployment is working!");
