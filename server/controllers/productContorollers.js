@@ -42,7 +42,7 @@ export const addproduct = async (req, res) => {
 export const getproduct = async (req, res) => {
     try {
         const { id } = req.params;
-        const product = await Product.findById(id).populate("reviews.user");
+        const product = await Product.findById(id).populate("reviews.user", "FirstName LastName");
 
         if (!product) {
             return res.status(404).json({
@@ -154,3 +154,5 @@ export const searchproduct = async (req, res) => {
 
     }
 }
+
+
