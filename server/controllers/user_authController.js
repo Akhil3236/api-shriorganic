@@ -181,7 +181,7 @@ export const requestOtp = async (req, res) => {
         }
 
         user.otpHash = hashedOtp;
-        user.otpExpire = Date.now() + 5 * 60 * 1000;
+        user.otpExpire = Date.now() + 5 * 60 * 1000; // 5 minutes
         await user.save();
 
 
@@ -215,7 +215,6 @@ export const verifyOtp = async (req, res) => {
         const userOtp = otp || req.body.OTP;
         const newPassword = password || req.body.Password;
 
-        console.log(`Verifying OTP for: ${userEmail}`);
 
         if (!userEmail || !userOtp || !newPassword) {
             return res.status(400).json({
