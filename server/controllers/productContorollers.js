@@ -156,3 +156,5 @@ export const searchproduct = async (req, res) => {
 }
 
 
+
+// to check weather the Product is verifed or not
