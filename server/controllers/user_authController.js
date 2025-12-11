@@ -69,7 +69,7 @@ export const signin = async (req, res) => {
 export const signup = async (req, res) => {
 
     try {
-        const { FirstName, LastName, PhoneNumber, Email, Password } = req.body;
+        const { FirstName, LastName, PhoneNumber, Email, Password, referralCode } = req.body;
         if (!FirstName || !LastName || !PhoneNumber || !Email || !Password) {
             return res.status(400).json({
                 success: false,
@@ -88,6 +88,15 @@ export const signup = async (req, res) => {
             PhoneNumber: PhoneNumber,
             Email: Email,
             Password: encryptedpassword
+        }
+
+        if (referralCode) {
+            const referrer = await User.findOne({ referralCode: referralCode });
+            if (referrer) {
+                referrer.wallet += 100;
+                await referrer.save();
+                userdata.referredBy = referrer.referralCode;
+            }
         }
 
         if (existingUser) {
@@ -247,8 +256,8 @@ export const verifyOtp = async (req, res) => {
         }
 
         const isMatch = await bcrypt.compare(userOtp.toString(), user.otpHash);
-    
-        
+
+
         if (!isMatch) {
             return res.status(401).json({
                 success: false,
@@ -279,4 +288,32 @@ export const verifyOtp = async (req, res) => {
             message: error.message || "Error verifying OTP",
         })
     }
-}   
+}
+
+
+// to share referal code
+export const shareReferCode = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "share this code with your friends to get 100 each",
+            data: user.referralCode || "This is test account so dont have any referaal code. Try with other account"
+        })
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({
+            success: false,
+            message: error.message || "Error sharing referral code",
+        })
+    }
+} 

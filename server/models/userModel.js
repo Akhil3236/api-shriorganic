@@ -70,6 +70,14 @@ const userSchema = new mongoose.Schema({
     otpExpire: {
         type: Date,
         default: null
+    },
+    referralCode: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
+    referredBy: {
+        type: String
     }
 }, { timestamps: true });
 
@@ -78,7 +86,7 @@ const counterSchema = new mongoose.Schema({
     seq: { type: Number, default: 0 }
 });
 
-const Counter = mongoose.model('Counter', counterSchema);
+const Counter = mongoose.models.Counter || mongoose.model('Counter', counterSchema);
 
 // Custom ID generation: CC-0001 format
 userSchema.pre('save', async function (next) {
@@ -90,6 +98,7 @@ userSchema.pre('save', async function (next) {
                 { new: true, upsert: true }
             );
             this._id = counter.seq.toString().padStart(4, '0');
+            this.referralCode = "REF" + this._id;
             next();
         } catch (err) {
             next(err);
