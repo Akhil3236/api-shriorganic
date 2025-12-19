@@ -152,3 +152,22 @@ export const cancelOrder = async (req, res) => {
     }
 }
 
+
+// to delete the order by the admin [Admin]
+export const deleteOrder = async (req, res) => {
+    try {
+        const orderId = req.params.orderId;
+        const order = await Order.findByIdAndDelete(orderId);
+        res.status(200).json({
+            success: true,
+            message: "Order deleted successfully"
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({
+            success: false,
+            message: "Failed to delete order",
+            error: error.message
+        });
+    }
+}  

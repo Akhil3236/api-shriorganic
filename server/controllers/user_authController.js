@@ -2,7 +2,6 @@ import { User } from "../models/userModel.js";
 import bcrypt, { hash } from 'bcrypt';
 import jwt from "jsonwebtoken";
 import { sendSigninEmail, sendRegisterEmail, sendLogoutEmail } from "../utils/sendEmail.js";
-import { log } from "console";
 
 
 

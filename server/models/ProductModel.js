@@ -66,6 +66,22 @@ const productSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+    isActive:{
+        type: Boolean,
+        default: true,
+    },
+    is_deleted:{
+        type: Boolean,
+        default: false,
+    },
+    is_certified:{
+        type: Boolean,
+        default: false,
+    },
+    certified_image:{
+        type: String,
+        default: "",
+    }
 });
 
 export default mongoose.model("Product", productSchema);
