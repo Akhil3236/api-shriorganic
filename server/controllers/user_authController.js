@@ -1,9 +1,9 @@
 import { User } from "../models/userModel.js";
+import { Wallet } from "../models/walletModel.js";
 import bcrypt, { hash } from 'bcrypt';
 import jwt from "jsonwebtoken";
 import { sendSigninEmail, sendRegisterEmail, sendLogoutEmail } from "../utils/sendEmail.js";
-import { log } from "console";
-
+import redisClient from "../config/redisClient.js";
 
 
 
@@ -38,12 +38,7 @@ export const signin = async (req, res) => {
             const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
 
 
-            res.cookie('token', token, {
-                httpOnly: true, // not accessible via JavaScript
-                secure: process.env.NODE_ENV === 'production', // only over HTTPS in prod
-                sameSite: 'strict',
-                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-            }).status(200).json({
+            res.status(200).json({
                 success: true,
                 message: "sigin successful",
                 token: token
@@ -69,7 +64,7 @@ export const signin = async (req, res) => {
 export const signup = async (req, res) => {
 
     try {
-        const { FirstName, LastName, PhoneNumber, Email, Password } = req.body;
+        const { FirstName, LastName, PhoneNumber, Email, Password, referralCode } = req.body;
         if (!FirstName || !LastName || !PhoneNumber || !Email || !Password) {
             return res.status(400).json({
                 success: false,
@@ -90,27 +85,84 @@ export const signup = async (req, res) => {
             Password: encryptedpassword
         }
 
+        if (referralCode) {
+            const referrer = await User.findOne({ referralCode: referralCode });
+            if (referrer) {
+                let referrerWallet = await Wallet.findOne({ user: referrer._id });
+                if (!referrerWallet) {
+                    referrerWallet = new Wallet({
+                        user: referrer._id,
+                        balance: 0,
+                        transactions: []
+                    });
+                }
+
+                referrerWallet.balance += 100;
+                referrerWallet.transactions.push({
+                    type: "deposit",
+                    amount: 100,
+                    description: "Referral Bonus",
+                    referenceId: "REF_BONUS_" + Date.now(),
+                    status: "completed"
+                });
+                await referrerWallet.save();
+
+                if (!referrer.wallet) {
+                    referrer.wallet = referrerWallet._id;
+                    await referrer.save();
+                }
+                userdata.referredBy = referrer.referralCode;
+            }
+        }
+
         if (existingUser) {
-            res.status(401).json({
+            return res.status(401).json({
                 success: false,
                 message: "user already exists with email or number !"
             })
         }
-        else {
-            const newUser = new User(
-                userdata
-            )
-            await newUser.save();
+
+        const newUser = new User(userdata);
+        await newUser.save();
+
+        let walletData = {
+            user: newUser._id,
+        };
+
+        if (userdata.referredBy) {
+            walletData.balance = 100;
+            walletData.transactions = [{
+                type: "deposit",
+                amount: 100,
+                description: "Referral Bonus (Welcome Gift)",
+                referenceId: "WELCOME_BONUS_" + Date.now(),
+                status: "completed"
+            }];
         }
+
+        const newWallet = new Wallet(walletData);
+
+        await newWallet.save();
+        newUser.wallet = newWallet._id;
+        await newUser.save();
+
+        const payload = {
+            _id: newUser._id,
+            Email: newUser.Email,
+        }
+
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+        res.status(200).json({
+            success: true,
+            message: "sign-up sucessfull !",
+            token: token
+        })
 
         // has to chnage the subject and context
         await sendRegisterEmail(Email,
             "Registration Successfull",
             "You have successfully registered");
-        res.status(200).json({
-            success: true,
-            message: "sign-up sucessfull !",
-        })
     } catch (error) {
         res.status(400).json({
             success: false,
@@ -121,25 +173,67 @@ export const signup = async (req, res) => {
 }
 
 
-// dashboard
-export const dashBoard = async (req, res) => {
+// dashboard 
+// export const dashBoard = async (req, res) => {
 
+//     const user = req.user;
+
+//     const userdetials = await User.find({ _id: user._id }).select("-Password").populate("wallet");
+//     try {
+
+//         res.status(200).json({
+//             success: true,
+//             data: userdetials
+//         })
+//     } catch (error) {
+//         res.status(400).json({
+//             success: false,
+//             data: error
+//         })
+//     }
+// }
+
+
+export const dashBoard = async (req, res) => {
+  try {
     const user = req.user;
 
-    const userdetials = await User.find({ _id: user._id }).select("-Password");
-    try {
+    const cacheKey = `dashboard:${user._id}`;
 
-        res.status(200).json({
-            success: true,
-            data: userdetials
-        })
-    } catch (error) {
-        res.status(400).json({
-            success: false,
-            data: error
-        })
+    const cachedData = await redisClient.get(cacheKey);
+
+    if (cachedData) {
+
+      return res.status(200).json({
+        success: true,
+        data: JSON.parse(cachedData),
+        source: "redis"
+      });
     }
-}
+
+    const userdetails = await User.findById(user._id)
+      .select("-Password")
+      .populate("wallet");
+
+    await redisClient.setEx(
+      cacheKey,
+      200, 
+      JSON.stringify(userdetails)
+    );
+
+    res.status(200).json({
+      success: true,
+      data: userdetails,
+      source: "database"
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
 
 
 
@@ -192,7 +286,8 @@ export const requestOtp = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: "OTP Sent Successfully !"
+            message: "OTP Sent Successfully !",
+            otp: otp
         })
 
     } catch (error) {
@@ -247,8 +342,8 @@ export const verifyOtp = async (req, res) => {
         }
 
         const isMatch = await bcrypt.compare(userOtp.toString(), user.otpHash);
-    
-        
+
+
         if (!isMatch) {
             return res.status(401).json({
                 success: false,
@@ -279,4 +374,32 @@ export const verifyOtp = async (req, res) => {
             message: error.message || "Error verifying OTP",
         })
     }
-}   
+}
+
+
+// to share referal code
+export const shareReferCode = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "share this code with your friends to get 100 each",
+            data: user.referralCode || "This is test account so dont have any referaal code. Try with other account"
+        })
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({
+            success: false,
+            message: error.message || "Error sharing referral code",
+        })
+    }
+} 

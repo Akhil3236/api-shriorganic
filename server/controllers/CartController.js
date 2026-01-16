@@ -2,14 +2,17 @@
 import { User } from "../models/userModel.js";
 import Product from "../models/ProductModel.js";
 import Cart from "../models/cartModel.js";
+import redisClient from "../config/redisClient.js";
 
 
 export const addproducttocart = async (req, res) => {
 
     try {
 
-        const { productId } = req.body;
+        const { productId } = req.params;
         const user = await User.findById(req.user._id);
+
+        const cacheKey = `cart:${req.user._id}`;
 
         if (!user) {
             return res.status(404).json({
@@ -50,13 +53,13 @@ export const addproducttocart = async (req, res) => {
             await cart.save();
         }
 
-
+        
         res.status(200).json({
             sucess: true,
             message: `${product.name} added to cart`
         })
-
-
+        await redisClient.del(cacheKey);
+        
     } catch (error) {
         res.status(400).json({
             sucess: false,
@@ -69,8 +72,20 @@ export const addproducttocart = async (req, res) => {
 // to get the cart with the details
 export const getcart = async (req, res) => {
 
-
     try {
+
+        const cacheKey = `cart:${req.user._id}`;
+        const cachedData = await redisClient.get(cacheKey);
+
+        if (cachedData) {
+            return res.status(200).json({
+                sucess: true,
+                cart: JSON.parse(cachedData),
+                source: "redis"
+            })
+        }
+
+
         const user = await User.findById(req.user._id);
         if (!user) {
             return res.status(404).json({
@@ -91,6 +106,12 @@ export const getcart = async (req, res) => {
         cart.totalAmount = cart.cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
         await cart.save();
 
+        await redisClient.setEx(
+            cacheKey, 
+            3600, 
+            JSON.stringify(cart)
+        );
+
         res.status(200).json({
             sucess: true,
             cart
@@ -110,7 +131,9 @@ export const getcart = async (req, res) => {
 export const removeproduct = async (req, res) => {
 
     try {
-        const { productId } = req.body;
+
+        const cacheKey = `cart:${req.user._id}`;
+        const { productId } = req.params;
         const user = await User.findById(req.user._id);
         if (!user) {
             return res.status(404).json({
@@ -125,16 +148,20 @@ export const removeproduct = async (req, res) => {
                 cart: { cartItems: [], totalAmount: 0 }
             })
         }
+        const prodcut=await Product.findById(productId);
+        
         cart.cartItems = cart.cartItems.filter(item => item.product._id.toString() !== productId);
 
         cart.totalAmount = cart.cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
         await cart.save();
 
+        
         res.status(200).json({
             sucess: true,
-            message:"remove the product !"
+            message:`${prodcut.name} remove the product !`
         })
-
+        await redisClient.del(cacheKey);
+        
     } catch (error) {
         res.status(400).json({
             sucess: false,
