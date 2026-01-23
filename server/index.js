@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import bodyParser from "body-parser";
-import userRoutes from "./routes/userRoutes.js"
+import userRoutes from "./routes/AdminuserRoutes.js"
 import userAuthRouters from "./routes/userAuthRouters.js"
 import productRoutes from "./routes/productRoute.js";
 import cartRoute from "./routes/cartRoute.js"
@@ -12,6 +12,7 @@ import orderRoute from "./routes/OrderRoute.js";
 import notifyRoute from "./routes/notifyRoute.js";
 import cookieParser from "cookie-parser"
 import walletRoute from "./routes/WalletRoute.js";
+import adminAuthRoutes from "./routes/adminAuthRoutes.js";
 
 dotenv.config();
 
@@ -67,7 +68,6 @@ connectDB();
 
 
 //  Server route  
-app.use("/api/user", userRoutes);
 app.use("/api/auth", userAuthRouters);
 app.use("/api/product", productRoutes);
 app.use("/api/cart", cartRoute);
@@ -76,6 +76,10 @@ app.use("/api/order", orderRoute);
 app.use("/api/notify", notifyRoute)
 app.use("/api/wallet", walletRoute)
 
+
+
+app.use("/api/admin/auth", adminAuthRoutes);
+app.use("/api/admin/user", userRoutes);
 
 
 // server listner
