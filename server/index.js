@@ -21,7 +21,7 @@ const app = express();
 const PORT = process.env.PORT || 4001;
 
 
-// add the comment
+// later has to change it to the domain name
 const allowedOrigins = [
   "*",
   "http://localhost:5173"
