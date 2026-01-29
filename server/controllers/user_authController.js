@@ -217,18 +217,13 @@ export const dashBoard = async (req, res) => {
             .select("-Password")
             .populate("wallet");
 
-        if (!userdetails) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
+        if (userdetails) {
+            await redisClient.setEx(
+                cacheKey,
+                200,
+                JSON.stringify(userdetails)
+            );
         }
-
-        await redisClient.setEx(
-            cacheKey,
-            200,
-            JSON.stringify(userdetails)
-        );
 
         res.status(200).json({
             success: true,
