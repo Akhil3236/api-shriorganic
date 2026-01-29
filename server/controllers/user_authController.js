@@ -195,44 +195,53 @@ export const signup = async (req, res) => {
 
 
 export const dashBoard = async (req, res) => {
-  try {
-    const user = req.user;
+    try {
+        const user = req.user;
 
-    const cacheKey = `dashboard:${user._id}`;
+        const cacheKey = `dashboard:${user._id}`;
 
-    const cachedData = await redisClient.get(cacheKey);
+        const cachedData = await redisClient.get(cacheKey);
 
-    if (cachedData) {
+        if (cachedData) {
+            const data = JSON.parse(cachedData);
+            if (data) {
+                return res.status(200).json({
+                    success: true,
+                    data: data,
+                    source: "redis"
+                });
+            }
+        }
 
-      return res.status(200).json({
-        success: true,
-        data: JSON.parse(cachedData),
-        source: "redis"
-      });
+        const userdetails = await User.findById(user._id)
+            .select("-Password")
+            .populate("wallet");
+
+        if (!userdetails) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        await redisClient.setEx(
+            cacheKey,
+            200,
+            JSON.stringify(userdetails)
+        );
+
+        res.status(200).json({
+            success: true,
+            data: userdetails,
+            source: "database"
+        });
+
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
     }
-
-    const userdetails = await User.findById(user._id)
-      .select("-Password")
-      .populate("wallet");
-
-    await redisClient.setEx(
-      cacheKey,
-      200, 
-      JSON.stringify(userdetails)
-    );
-
-    res.status(200).json({
-      success: true,
-      data: userdetails,
-      source: "database"
-    });
-
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      error: error.message
-    });
-  }
 };
 
 
