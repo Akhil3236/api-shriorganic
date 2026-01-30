@@ -1,22 +1,35 @@
- 
+
 import Order from "../models/OrderModel.js";
 import { sendOrderUpdateEmail } from "../utils/sendEmail.js";
 import Product from "../models/ProductModel.js";
 import { sendSms } from "../utils/message.js";
 
+import { User } from "../models/userModel.js";
+import Cart from "../models/cartModel.js";
+
 // 1)place an order [Website]
 export const placeOrder = async (req, res) => {
     try {
         const userId = req.user._id;
-        const { cartItems, paymentMethod, address } = req.body;
+        const { paymentMethod, address } = req.body;
 
-        
-        if (!cartItems || cartItems.length === 0) {
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        const cart = await Cart.findOne({ user: userId });
+        if (!cart || !cart.cartItems || cart.cartItems.length === 0) {
             return res.status(400).json({
                 success: false,
                 message: "Cart is empty"
             });
-        }  
+        }
+
+        const cartItems = cart.cartItems;
 
         // check the stock availability
         for (let i = 0; i < cartItems.length; i++) {
@@ -40,16 +53,25 @@ export const placeOrder = async (req, res) => {
         for (let i = 0; i < cartItems.length; i++) {
             const product = await Product.findById(cartItems[i].product);
             totalPrice += product.price * cartItems[i].quantity;
-        }   
+        }
+
+        const orderAddress = address || user.address;
+
+        if (!orderAddress) {
+            return res.status(400).json({
+                success: false,
+                message: "Delivery address is required"
+            });
+        }
 
         const order = new Order({
             user: userId,
             cartItems: cartItems,
             totalPrice: totalPrice,
             paymentMethod: paymentMethod,
-            address: address,
+            address: orderAddress,
             deliveryDetails: {
-                deliveryAddress: address,
+                deliveryAddress: orderAddress,
                 deliveryStatus: "Pending",
                 deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default 7 days
             }
@@ -57,9 +79,14 @@ export const placeOrder = async (req, res) => {
 
         await order.save();
 
-        // Send email notification (optional check if email exists in req.user, otherwise fetch user)
-        if (req.user.Email) {
-            await sendOrderUpdateEmail(req.user.Email, "Order Placed Successfully", `Your order with ID ${order._id} has been placed.`);
+        // Clear the cart
+        cart.cartItems = [];
+        cart.totalAmount = 0;
+        await cart.save();
+
+        // Send email notification 
+        if (user.Email) {
+            await sendOrderUpdateEmail(user.Email, "Order Placed Successfully", `Your order with ID ${order._id} has been placed.`);
             // await sendSms("+919666440579", "Order Placed Successfully", `Your order with ID ${order._id} has been placed.`);
         }
 
@@ -84,7 +111,7 @@ export const placeOrder = async (req, res) => {
 export const viewOrders = async (req, res) => {
     try {
         const userId = req.user._id;
-        const orders = await Order.find({ user: userId });
+        const orders = await Order.find({ user: userId }).populate("cartItems.product");
         res.status(200).json({
             success: true,
             message: "Orders fetched successfully",
@@ -137,7 +164,7 @@ export const cancelOrder = async (req, res) => {
         // Send email notification (optional check if email exists in req.user, otherwise fetch user)
         if (req.user.Email) {
             await sendOrderUpdateEmail(req.user.Email, "Order Cancelled", `Your order with ID ${order._id} has been cancelled.`);
-        }   
+        }
         res.status(200).json({
             success: true,
             message: "Order cancelled successfully"
@@ -170,7 +197,7 @@ export const deleteOrder = async (req, res) => {
             error: error.message
         });
     }
-}  
+}
 
 
 // this all form the admin apis
@@ -178,7 +205,7 @@ export const deleteOrder = async (req, res) => {
 // to get all the orders for admin [Admin]
 export const getAllOrders = async (req, res) => {
     try {
-        const orders = await Order.find({is_deleted: false });
+        const orders = await Order.find({ is_deleted: false });
         res.status(200).json({
             success: true,
             message: "Orders fetched successfully",
@@ -192,7 +219,7 @@ export const getAllOrders = async (req, res) => {
             error: error.message
         });
     }
-}   
+}
 
 // to soft delete the order by the admin [Admin]
 export const softDeleteOrder = async (req, res) => {
@@ -231,7 +258,7 @@ export const bulkSoftDeleteOrder = async (req, res) => {
             error: error.message
         });
     }
-}   
+}
 
 // to hard delete the order by the admin [Admin]
 
@@ -258,6 +285,14 @@ export const hardDeleteOrder = async (req, res) => {
 export const getOrderById = async (req, res) => {
     try {
         const orderId = req.params.orderId;
+
+        if (isNaN(orderId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid Order ID"
+            });
+        }
+
         const order = await Order.findById(orderId);
         res.status(200).json({
             success: true,
@@ -293,7 +328,7 @@ export const updateOrderById = async (req, res) => {
             error: error.message
         });
     }
-}   
+}
 
 
 // search order by id [Admin]
