@@ -6,6 +6,7 @@ import { sendSms } from "../utils/message.js";
 
 import { User } from "../models/userModel.js";
 import Cart from "../models/cartModel.js";
+import razorpay from "../config/razorpay.js";
 
 // 1)place an order [Website]
 export const placeOrder = async (req, res) => {
@@ -13,6 +14,7 @@ export const placeOrder = async (req, res) => {
         const userId = req.user._id;
         const { paymentMethod, address } = req.body;
 
+        console.log(userId);
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({
@@ -79,6 +81,7 @@ export const placeOrder = async (req, res) => {
 
         await order.save();
 
+
         // Clear the cart
         cart.cartItems = [];
         cart.totalAmount = 0;
@@ -90,10 +93,20 @@ export const placeOrder = async (req, res) => {
             // await sendSms("+919666440579", "Order Placed Successfully", `Your order with ID ${order._id} has been placed.`);
         }
 
+
+        // Generate Razorpay Order if needed (assuming generic or specifically for Online)
+        // Renaming to avoid conflict with 'order'
+        const razorpayOrder = await razorpay.orders.create({
+            amount: totalPrice * 100, // INR to paise
+            currency: "INR",
+            receipt: "receipt_" + order._id.toString(),
+        });
+
         res.status(200).json({
             success: true,
             message: "Order placed successfully",
-            order: order
+            order: order,
+            razorpayOrder: razorpayOrder
         });
 
     } catch (error) {
@@ -105,6 +118,11 @@ export const placeOrder = async (req, res) => {
         });
     }
 }
+
+
+
+
+
 
 
 // 2)view all the orders of the  user  [Website]
@@ -286,14 +304,13 @@ export const getOrderById = async (req, res) => {
     try {
         const orderId = req.params.orderId;
 
+        // Check if orderId is numeric since Order model uses Number for _id
         if (isNaN(orderId)) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid Order ID"
             });
         }
-
-        const order = await Order.findById(orderId);
         res.status(200).json({
             success: true,
             message: "Order fetched successfully",
