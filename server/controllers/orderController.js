@@ -66,6 +66,24 @@ export const placeOrder = async (req, res) => {
             });
         }
 
+
+        // Generate Razorpay Order
+        let razorpayOrder = null;
+        try {
+            razorpayOrder = await razorpay.orders.create({
+                amount: totalPrice * 100, // INR to paise
+                currency: "INR",
+                receipt: "receipt_" + Date.now(),
+            });
+        } catch (err) {
+            console.log("Razorpay Error:", err);
+            return res.status(500).json({
+                success: false,
+                message: "Payment initialization failed",
+                error: err.message
+            });
+        }
+
         const order = new Order({
             user: userId,
             cartItems: cartItems,
@@ -81,26 +99,15 @@ export const placeOrder = async (req, res) => {
 
         await order.save();
 
-
         // Clear the cart
         cart.cartItems = [];
         cart.totalAmount = 0;
         await cart.save();
 
         // Send email notification 
-        if (user.Email) {
-            await sendOrderUpdateEmail(user.Email, "Order Placed Successfully", `Your order with ID ${order._id} has been placed.`);
-            // await sendSms("+919666440579", "Order Placed Successfully", `Your order with ID ${order._id} has been placed.`);
-        }
-
-
-        // Generate Razorpay Order if needed (assuming generic or specifically for Online)
-        // Renaming to avoid conflict with 'order'
-        const razorpayOrder = await razorpay.orders.create({
-            amount: totalPrice * 100, // INR to paise
-            currency: "INR",
-            receipt: "receipt_" + order._id.toString(),
-        });
+        // if (user.Email) {
+        //     await sendOrderUpdateEmail(user.Email, "Order Placed Successfully", `Your order with ID ${order._id} has been placed.`);
+        // }
 
         res.status(200).json({
             success: true,
