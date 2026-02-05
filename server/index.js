@@ -40,6 +40,8 @@ const corsOptions = {
 
 app.use(cors(corsOptions))
 
+app.use("/api/webhooks", webHookRoutes);
+
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
@@ -59,11 +61,11 @@ app.get("/", (req, res) => {
 
 
 // connecting the database
+// connecting the database
 connectDB();
 
 
 //  Server route  
-app.use("/api/webhooks", webHookRoutes);
 app.use("/api/auth", userAuthRouters);
 app.use("/api/product", productRoutes);
 app.use("/api/cart", cartRoute);

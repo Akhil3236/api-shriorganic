@@ -24,11 +24,17 @@ router.post(
             // 👉 update DB order status here
 
             if (event.event === "payment.captured") {
-                const orderId = event.data.order_id;
-                const order = await Order.findById(orderId);
+                const paymentEntity = event.payload.payment.entity;
+                const razorpayOrderId = paymentEntity.order_id;
+
+                const order = await Order.findOne({ razorpayOrderId: razorpayOrderId });
+
                 if (order) {
-                    order.orderStatus = "Paid";
+                    order.paymentstatus = "Paid";
                     await order.save();
+                    console.log(`Order ${order._id} marked as Paid via Webhook`);
+                } else {
+                    console.log(`Order not found for Razorpay Order ID: ${razorpayOrderId}`);
                 }
             }
 
