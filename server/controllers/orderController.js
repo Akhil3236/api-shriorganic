@@ -88,7 +88,33 @@ export const placeOrder = async (req, res) => {
         let totalPrice = 0;
         for (let i = 0; i < cartItems.length; i++) {
             const product = await Product.findById(cartItems[i].product);
-            totalPrice += product.price * cartItems[i].quantity;
+            if (!product) continue;
+
+            const itemSize = cartItems[i].size;
+            let itemPrice = 0;
+
+            if (product.sizes && product.sizes.length > 0) {
+                if (itemSize) {
+                    const sizeInfo = product.sizes.find(s => s.size === itemSize);
+                    if (sizeInfo) {
+                        itemPrice = sizeInfo.price;
+                    }
+                } else {
+                    // Fallback: use first size price or 0? 
+                    // Or maybe product still has a base price? 
+                    // Since schema removed base price, we should probably default to the first available size price 
+                    // or throw an error. For safety let's try finding a price or 0.
+                    if (product.sizes.length > 0) {
+                        itemPrice = product.sizes[0].price;
+                    }
+                }
+            } else {
+                // Legacy support if product has no sizes array but might have old price field 
+                // (though schema removed it, existing docs might have it)
+                itemPrice = product.price || 0;
+            }
+
+            totalPrice += itemPrice * cartItems[i].quantity;
         }
 
         const orderAddress = address || user.address;

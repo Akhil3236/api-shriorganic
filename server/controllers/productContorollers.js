@@ -67,20 +67,20 @@ export const addproduct = async (req, res) => {
                 // This implies that req.body.sizes is likely [ { size: ['s', 'm'], stock: ['true', 'true'] } ] (an array with one object containing arrays) 
                 // OR req.body.sizes is simply object { size: ['s', 'm'], ... } and it's being treated as the first element.
 
-                // Case A: req.body.sizes is an object { size: [...], stock: [...] }
+                // Case A: req.body.sizes is an object { size: [...], stock: [...], price: [...] }
                 if (!Array.isArray(parsedSizes) && parsedSizes.size && Array.isArray(parsedSizes.size)) {
                     const sizesList = [];
                     const len = parsedSizes.size.length;
                     for (let i = 0; i < len; i++) {
                         sizesList.push({
                             size: parsedSizes.size[i],
+                            price: parsedSizes.price && parsedSizes.price[i] ? Number(parsedSizes.price[i]) : 0,
                             stock: parsedSizes.stock && parsedSizes.stock[i] ? parsedSizes.stock[i] : true
                         });
                     }
                     parsedSizes = sizesList;
                 }
                 // Case B: req.body.sizes is an ARRAY, but the first element contains the parallel arrays
-                // e.g. [ { size: ['s', 'm'], stock: ['true', 'true'] } ]
                 else if (Array.isArray(parsedSizes) && parsedSizes.length > 0 && parsedSizes[0].size && Array.isArray(parsedSizes[0].size)) {
                     const innerObj = parsedSizes[0];
                     const sizesList = [];
@@ -88,6 +88,7 @@ export const addproduct = async (req, res) => {
                     for (let i = 0; i < len; i++) {
                         sizesList.push({
                             size: innerObj.size[i],
+                            price: innerObj.price && innerObj.price[i] ? Number(innerObj.price[i]) : 0,
                             stock: innerObj.stock && innerObj.stock[i] ? innerObj.stock[i] : true
                         });
                     }
@@ -151,13 +152,24 @@ export const getproduct = async (req, res) => {
 // to get all the products 
 export const getallproducts = async (req, res) => {
     try {
-        const products = await Product.find();
+        const products = await Product.find()
+            .select("name images is_certified category product_description product_details sizes isActive");
+
+        const productsWithPrice = products.map(product => {
+            const productObj = product.toObject();
+            if (productObj.sizes && productObj.sizes.length > 0) {
+                productObj.price = productObj.sizes[0].price;
+            } else {
+                productObj.price = 0;
+            }
+            return productObj;
+        });
 
         res.status(200).json({
             success: true,
             message: "Products fetched successfully !!",
             totalProducts: products.length,
-            products,
+            products: productsWithPrice,
         });
 
     } catch (error) {
@@ -382,10 +394,24 @@ export const getBestSellingProducts = async (req, res) => {
 // get product for website where is active is false
 export const getActiveProducts = async (req, res) => {
     try {
-        const products = await Product.find({ isActive: true });
+        const products = await Product.find({ isActive: true })
+            .select("name images is_certified category product_description product_details sizes");
+
+        // Transform products to include a main price (from first size) for listing
+        const productsWithPrice = products.map(product => {
+            const productObj = product.toObject();
+            // Add a root 'price' for the frontend listing convenience (first size's price)
+            if (productObj.sizes && productObj.sizes.length > 0) {
+                productObj.price = productObj.sizes[0].price;
+            } else {
+                productObj.price = 0; // Or dummy value
+            }
+            return productObj;
+        });
+
         res.status(200).json({
             success: true,
-            products,
+            products: productsWithPrice,
             message: "Active products fetched successfully !!"
         })
     } catch (error) {

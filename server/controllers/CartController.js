@@ -4,6 +4,25 @@ import Product from "../models/ProductModel.js";
 import Cart from "../models/cartModel.js";
 import redisClient from "../config/redisClient.js";
 
+const calculateTotalPrice = (cartItems) => {
+    return cartItems.reduce((acc, item) => {
+        let price = 0;
+        if (item.product.sizes && item.product.sizes.length > 0) {
+            const sizeInfo = item.product.sizes.find(s => s.size === item.size);
+            if (sizeInfo) {
+                price = sizeInfo.price;
+            } else {
+                // Fallback to first size price if specific size not found (shouldn't happen)
+                price = item.product.sizes[0].price;
+            }
+        } else {
+            // Fallback for legacy/unsized products
+            price = item.product.price || 0;
+        }
+        return acc + price * item.quantity;
+    }, 0);
+}
+
 export const addproducttocart = async (req, res) => {
 
     try {
@@ -80,6 +99,9 @@ export const addproducttocart = async (req, res) => {
 
         const finalCart = await Cart.findOne({ user: user._id }).populate("cartItems.product");
 
+        finalCart.totalAmount = calculateTotalPrice(finalCart.cartItems);
+        await finalCart.save();
+
         // Fetch recommendations
         const cartProductIds = finalCart.cartItems.map(item => item.product._id);
         const recommendations = await Product.find({
@@ -88,13 +110,14 @@ export const addproducttocart = async (req, res) => {
             is_deleted: false
         }).limit(4).sort({ ratings: -1 });
 
+        await redisClient.del(cacheKey);
+
         res.status(200).json({
             sucess: true,
             message: `${product.name} added to cart`,
             cart: finalCart,
             recommendations
         })
-        await redisClient.del(cacheKey);
 
     } catch (error) {
         res.status(400).json({
@@ -156,7 +179,7 @@ export const getcart = async (req, res) => {
         }
 
         // calulate the price of all the items
-        cart.totalAmount = cart.cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+        cart.totalAmount = calculateTotalPrice(cart.cartItems);
         await cart.save();
 
         await redisClient.setEx(
@@ -218,7 +241,7 @@ export const removeproduct = async (req, res) => {
             !(item.product._id.toString() === productId && (!size || item.size === size))
         );
 
-        cart.totalAmount = cart.cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+        cart.totalAmount = calculateTotalPrice(cart.cartItems);
         await cart.save();
 
 
@@ -230,13 +253,14 @@ export const removeproduct = async (req, res) => {
             is_deleted: false
         }).limit(4).sort({ ratings: -1 });
 
+        await redisClient.del(cacheKey);
+
         res.status(200).json({
             sucess: true,
             message: `${prodcut.name} remove the product !`,
             cart,
             recommendations
         })
-        await redisClient.del(cacheKey);
 
     } catch (error) {
         res.status(400).json({
@@ -276,11 +300,43 @@ export const addquantity = async (req, res) => {
             (!size || item.size === size)
         );
 
-        if (cartItem) {
-            cartItem.quantity += 1;
+        if (!cartItem) {
+            return res.status(404).json({
+                sucess: false,
+                message: "Item not found in cart"
+            })
         }
 
-        cart.totalAmount = cart.cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+        const product = cartItem.product;
+
+        // Check if product is active
+        if (product.isActive === false) {
+            return res.status(400).json({
+                sucess: false,
+                message: "Product is currently unavailable"
+            })
+        }
+
+        // Check stock availability
+        if (product.sizes && product.sizes.length > 0) {
+            const sizeInfo = product.sizes.find(s => s.size === cartItem.size);
+            if (!sizeInfo) {
+                return res.status(400).json({
+                    sucess: false,
+                    message: `Size ${cartItem.size} is no longer available`
+                })
+            }
+            if (sizeInfo.stock === false) {
+                return res.status(400).json({
+                    sucess: false,
+                    message: `Size ${cartItem.size} is out of stock`
+                })
+            }
+        }
+
+        cartItem.quantity += 1;
+
+        cart.totalAmount = calculateTotalPrice(cart.cartItems);
         await cart.save();
 
         // Fetch recommendations
@@ -291,13 +347,14 @@ export const addquantity = async (req, res) => {
             is_deleted: false
         }).limit(4).sort({ ratings: -1 });
 
+        await redisClient.del(cacheKey);
+
         res.status(200).json({
             sucess: true,
             message: "Product quantity added successfully",
             cart,
             recommendations
         })
-        await redisClient.del(cacheKey);
     } catch (error) {
         res.status(400).json({
             sucess: false,
@@ -334,15 +391,20 @@ export const removequantity = async (req, res) => {
             (!size || item.size === size)
         );
 
-        if (cartItemIdx > -1) {
-            if (cart.cartItems[cartItemIdx].quantity > 1) {
-                cart.cartItems[cartItemIdx].quantity -= 1;
-            } else {
-                cart.cartItems.splice(cartItemIdx, 1);
-            }
+        if (cartItemIdx === -1) {
+            return res.status(404).json({
+                sucess: false,
+                message: "Item not found in cart"
+            })
         }
 
-        cart.totalAmount = cart.cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+        if (cart.cartItems[cartItemIdx].quantity > 1) {
+            cart.cartItems[cartItemIdx].quantity -= 1;
+        } else {
+            cart.cartItems.splice(cartItemIdx, 1);
+        }
+
+        cart.totalAmount = calculateTotalPrice(cart.cartItems);
         await cart.save();
 
         // Fetch recommendations
@@ -353,13 +415,14 @@ export const removequantity = async (req, res) => {
             is_deleted: false
         }).limit(4).sort({ ratings: -1 });
 
+        await redisClient.del(cacheKey);
+
         res.status(200).json({
             sucess: true,
             message: "Product Quantity removed sucessfully",
             cart,
             recommendations
         })
-        await redisClient.del(cacheKey);
     } catch (error) {
         res.status(400).json({
             sucess: false,
