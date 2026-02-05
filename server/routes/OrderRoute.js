@@ -2,7 +2,7 @@ import express from "express";
 import {
     placeOrder, viewOrders, viewOrderDetails,
     cancelOrder, getAllOrders, softDeleteOrder, bulkSoftDeleteOrder, hardDeleteOrder,
-    getOrderById, updateOrderById, searchOrderById
+    getOrderById, updateOrderById, searchOrderById, verifyPayment
 } from "../controllers/orderController.js";
 import { authMiddelware } from "../middlewares/auth.js";
 
@@ -18,6 +18,8 @@ router.get("/hard-delete/:orderId", hardDeleteOrder);
 
 // User Routes
 router.post("/place-order", authMiddelware, placeOrder);
+// verify
+router.post("/verify-payment", authMiddelware, verifyPayment);
 router.get("/", authMiddelware, viewOrders);
 router.get("/orderdetails/:orderId", authMiddelware, viewOrderDetails);
 router.post("/cancel-order/:orderId", authMiddelware, cancelOrder);
@@ -29,4 +31,3 @@ router.put("/:orderId", updateOrderById);
 
 
 export default router;
-
