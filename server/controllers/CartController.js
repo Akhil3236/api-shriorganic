@@ -6,14 +6,16 @@ import redisClient from "../config/redisClient.js";
 
 const calculateTotalPrice = (cartItems) => {
     return cartItems.reduce((acc, item) => {
+        if (!item.product) return acc; // Skip items where product is null (deleted)
+
         let price = 0;
         if (item.product.sizes && item.product.sizes.length > 0) {
             const sizeInfo = item.product.sizes.find(s => s.size === item.size);
             if (sizeInfo) {
                 price = sizeInfo.price;
             } else {
-                // Fallback to first size price if specific size not found (shouldn't happen)
-                price = item.product.sizes[0].price;
+                // Fallback to first size price if specific size not found
+                price = item.product.sizes[0] ? item.product.sizes[0].price : 0;
             }
         } else {
             // Fallback for legacy/unsized products
@@ -29,6 +31,11 @@ export const addproducttocart = async (req, res) => {
 
         const { productId } = req.params;
         const { size } = req.body;
+
+        console.log(req.user._id);
+        console.log(size);
+
+
         const user = await User.findById(req.user._id);
 
         const cacheKey = `cart:${req.user._id}`;
@@ -56,6 +63,8 @@ export const addproducttocart = async (req, res) => {
                 })
             }
             const sizeExists = product.sizes.find(s => s.size === size && s.stock === true);
+
+            console.log(sizeExists);
             if (!sizeExists) {
                 return res.status(400).json({
                     sucess: false,
