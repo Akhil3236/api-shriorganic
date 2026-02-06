@@ -192,7 +192,7 @@ export const placeOrder = async (req, res) => {
 export const viewOrders = async (req, res) => {
     try {
         const userId = req.user._id;
-        const orders = await Order.find({ user: userId }).populate("cartItems.product");
+        const orders = await Order.find({ user: userId }).populate("cartItems.product").sort({ createdAt: -1 });
         res.status(200).json({
             success: true,
             message: "Orders fetched successfully",
@@ -212,7 +212,7 @@ export const viewOrders = async (req, res) => {
 export const viewOrderDetails = async (req, res) => {
     try {
         const orderId = req.params.orderId;
-        const order = await Order.findById(orderId);
+        const order = await Order.findById(orderId).populate("cartItems.product");
         res.status(200).json({
             success: true,
             message: "Order details fetched successfully",
@@ -286,7 +286,7 @@ export const deleteOrder = async (req, res) => {
 // to get all the orders for admin [Admin]
 export const getAllOrders = async (req, res) => {
     try {
-        const orders = await Order.find({ is_deleted: false });
+        const orders = await Order.find({ is_deleted: false }).populate("cartItems.product");
         res.status(200).json({
             success: true,
             message: "Orders fetched successfully",
@@ -374,7 +374,7 @@ export const getOrderById = async (req, res) => {
                 message: "Invalid Order ID"
             });
         }
-        const order = await Order.findById(orderId); // Fetch the order!
+        const order = await Order.findById(orderId).populate("cartItems.product"); // Fetch the order!
 
         if (!order) {
             return res.status(404).json({
@@ -425,7 +425,7 @@ export const updateOrderById = async (req, res) => {
 export const searchOrderById = async (req, res) => {
     try {
         const orderId = req.params.orderId;
-        const order = await Order.findById(orderId);
+        const order = await Order.findById(orderId).populate("cartItems.product");
         res.status(200).json({
             success: true,
             message: "Order fetched successfully",
@@ -494,6 +494,26 @@ export const verifyPayment = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Payment verification failed",
+            error: error.message
+        });
+    }
+}
+
+// to get recent orders of the user
+export const getRecentOrders = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        const orders = await Order.find({ user: user._id }).populate("cartItems.product").sort({ createdAt: -1 });
+        res.status(200).json({
+            success: true,
+            message: "Orders fetched successfully",
+            orders: orders
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({
+            success: false,
+            message: "Failed to fetch orders",
             error: error.message
         });
     }

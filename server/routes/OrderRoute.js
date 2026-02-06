@@ -1,8 +1,8 @@
 import express from "express";
 import {
     placeOrder, viewOrders, viewOrderDetails,
-    cancelOrder, getAllOrders, softDeleteOrder, bulkSoftDeleteOrder, hardDeleteOrder,
-    getOrderById, updateOrderById, searchOrderById, verifyPayment
+    cancelOrder,
+    getOrderById, updateOrderById, searchOrderById, verifyPayment, getRecentOrders
 } from "../controllers/orderController.js";
 import { authMiddelware } from "../middlewares/auth.js";
 
@@ -16,6 +16,7 @@ router.post("/place-order", authMiddelware, placeOrder);
 // verify
 router.post("/verify-payment", authMiddelware, verifyPayment);
 router.get("/", authMiddelware, viewOrders);
+router.get("/recent", authMiddelware, getRecentOrders);
 router.get("/orderdetails/:orderId", authMiddelware, viewOrderDetails);
 router.post("/cancel-order/:orderId", authMiddelware, cancelOrder);
 
