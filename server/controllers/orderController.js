@@ -451,6 +451,7 @@ export const verifyPayment = async (req, res) => {
             orderId
         } = req.body;
 
+        console.log(req.body);
         const body = razorpay_order_id + "|" + razorpay_payment_id;
 
         const expectedSignature = crypto
@@ -469,6 +470,8 @@ export const verifyPayment = async (req, res) => {
                     message: "Order not found"
                 });
             }
+
+            console.log(order);
 
             // Update order status
             order.paymentstatus = "Paid";

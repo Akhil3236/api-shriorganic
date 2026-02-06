@@ -4,8 +4,7 @@ import bcrypt, { hash } from 'bcrypt';
 import jwt from "jsonwebtoken";
 import { sendSigninEmail, sendRegisterEmail, sendLogoutEmail } from "../utils/sendEmail.js";
 import redisClient from "../config/redisClient.js";
-
-
+import cloudinary from "../utils/cloudinary.js";
 
 // signin
 export const signin = async (req, res) => {
@@ -174,26 +173,6 @@ export const signup = async (req, res) => {
 
 
 // dashboard 
-// export const dashBoard = async (req, res) => {
-
-//     const user = req.user;
-
-//     const userdetials = await User.find({ _id: user._id }).select("-Password").populate("wallet");
-//     try {
-
-//         res.status(200).json({
-//             success: true,
-//             data: userdetials
-//         })
-//     } catch (error) {
-//         res.status(400).json({
-//             success: false,
-//             data: error
-//         })
-//     }
-// }
-
-
 export const dashBoard = async (req, res) => {
     try {
         const user = req.user;
@@ -406,4 +385,60 @@ export const shareReferCode = async (req, res) => {
             message: error.message || "Error sharing referral code",
         })
     }
-} 
+}
+
+
+// make an api so he can update all this details in profile 
+export const updateProfile = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        const { FirstName, LastName, PhoneNumber, Email, street, city, state, zipcode, country } = req.body;
+
+        if (FirstName) user.FirstName = FirstName;
+        if (LastName) user.LastName = LastName;
+        if (PhoneNumber) user.PhoneNumber = PhoneNumber;
+        if (Email) user.Email = Email;
+
+        // Update address fields if provided
+        if (street || city || state || zipcode || country) {
+            user.address = {
+                street: street || user.address.street,
+                city: city || user.address.city,
+                state: state || user.address.state,
+                zipcode: zipcode || user.address.zipcode,
+                country: country || user.address.country
+            };
+        }
+
+        // Handle profile picture upload
+        if (req.file) {
+            const result = await cloudinary.uploader.upload(req.file.path, {
+                folder: "users",
+            });
+            user.profilePic = result.secure_url;
+        }
+
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            data: user
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({
+            success: false,
+            message: error.message || "Error updating profile",
+        })
+    }
+}
