@@ -112,7 +112,7 @@ export const addproducttocart = async (req, res) => {
         await finalCart.save();
 
         // Fetch recommendations
-        const cartProductIds = finalCart.cartItems.map(item => item.product._id);
+        const cartProductIds = finalCart.cartItems.map(item => item.product?._id).filter(Boolean);
         const recommendations = await Product.find({
             _id: { $nin: cartProductIds },
             isActive: true,
@@ -198,7 +198,7 @@ export const getcart = async (req, res) => {
         );
 
         // Fetch recommendations
-        const cartProductIds = cart.cartItems.map(item => item.product._id);
+        const cartProductIds = cart.cartItems.map(item => item.product?._id).filter(Boolean);
         const recommendations = await Product.find({
             _id: { $nin: cartProductIds },
             isActive: true,
@@ -255,7 +255,7 @@ export const removeproduct = async (req, res) => {
 
 
         // Fetch recommendations
-        const cartProductIds = cart.cartItems.map(item => item.product._id);
+        const cartProductIds = cart.cartItems.map(item => item.product?._id).filter(Boolean);
         const recommendations = await Product.find({
             _id: { $nin: cartProductIds },
             isActive: true,
@@ -349,7 +349,7 @@ export const addquantity = async (req, res) => {
         await cart.save();
 
         // Fetch recommendations
-        const cartProductIds = cart.cartItems.map(item => item.product._id);
+        const cartProductIds = cart.cartItems.map(item => item.product?._id).filter(Boolean);
         const recommendations = await Product.find({
             _id: { $nin: cartProductIds },
             isActive: true,
@@ -417,7 +417,7 @@ export const removequantity = async (req, res) => {
         await cart.save();
 
         // Fetch recommendations
-        const cartProductIds = cart.cartItems.map(item => item.product._id);
+        const cartProductIds = cart.cartItems.map(item => item.product?._id).filter(Boolean);
         const recommendations = await Product.find({
             _id: { $nin: cartProductIds },
             isActive: true,
