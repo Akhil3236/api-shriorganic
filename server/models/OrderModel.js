@@ -45,7 +45,9 @@ const OrderSchema = new mongoose.Schema({
     is_deleted: {
         type: Boolean,
         default: false
-    }
+    },
+    shiprocketOrderId: String,
+    shiprocketShipmentId: String
 })
 
 const counterSchema = new mongoose.Schema({

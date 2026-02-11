@@ -54,6 +54,10 @@ const productSchema = new mongoose.Schema({
             stock: {
                 type: Boolean,
                 default: true
+            },
+            weight:{
+                type:String,
+                required:true
             }
         }
     ],

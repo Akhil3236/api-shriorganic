@@ -81,7 +81,7 @@ export const signup = async (req, res) => {
             LastName: LastName,
             PhoneNumber: PhoneNumber,
             Email: Email,
-            Password: encryptedpassword
+            Password: encryptedpassword,
         }
 
         if (referralCode) {
@@ -123,6 +123,7 @@ export const signup = async (req, res) => {
 
         const newUser = new User(userdata);
         await newUser.save();
+
 
         let walletData = {
             user: newUser._id,
@@ -203,6 +204,8 @@ export const dashBoard = async (req, res) => {
                 JSON.stringify(userdetails)
             );
         }
+
+
 
         res.status(200).json({
             success: true,
@@ -418,6 +421,7 @@ export const updateProfile = async (req, res) => {
                 country: country || user.address.country
             };
         }
+
 
         // Handle profile picture upload
         if (req.file) {

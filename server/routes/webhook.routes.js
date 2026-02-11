@@ -2,6 +2,7 @@ import express from "express";
 import crypto from "crypto";
 import bodyParser from "body-parser";
 import Order from "../models/OrderModel.js";
+import { createShiprocketOrderInternal } from "../controllers/shipRocket.js";
 
 const router = express.Router();
 
@@ -27,12 +28,30 @@ router.post(
                 const paymentEntity = event.payload.payment.entity;
                 const razorpayOrderId = paymentEntity.order_id;
 
-                const order = await Order.findOne({ razorpayOrderId: razorpayOrderId });
+                // Find order and populate user and product details for Shiprocket
+                const order = await Order.findOne({ razorpayOrderId: razorpayOrderId })
+                    .populate("user")
+                    .populate("cartItems.product");
 
                 if (order) {
                     order.paymentstatus = "Paid";
                     await order.save();
                     console.log(`Order ${order._id} marked as Paid via Webhook`);
+
+                    // Automatically create Shiprocket Order
+                    try {
+                        const shiprocketResponse = await createShiprocketOrderInternal(order);
+                        if (shiprocketResponse && shiprocketResponse.order_id) {
+                            order.shiprocketOrderId = shiprocketResponse.order_id;
+                            order.shiprocketShipmentId = shiprocketResponse.shipment_id;
+                            order.orderStatus = "shipped"; // Optional: update status
+                            await order.save();
+                            console.log("Shiprocket Order Created Successfully:", shiprocketResponse.order_id);
+                        }
+                    } catch (shipErr) {
+                        console.error("Failed to create Shiprocket order via Webhook:", shipErr.message);
+                    }
+
                 } else {
                     console.log(`Order not found for Razorpay Order ID: ${razorpayOrderId}`);
                 }

@@ -19,6 +19,8 @@ import webHookRoutes from "./routes/webhook.routes.js";
 import adminOrdersRoutes from "./routes/adminOrdersRoutes.js";
 import contactRoute from "./routes/contactroute.js";
 import wishlistRoute from "./routes/wishlistRoute.js";
+import razorpayRoute from "./routes/razorpayRoute.js";
+import shiprocketRoute from "./routes/shiprocketRoute.js";
 
 
 dotenv.config();
@@ -86,6 +88,8 @@ app.use("/api/admin/user", userRoutes);
 app.use("/api/admin/product", adminProductRoutes);
 // app.use("/api/admin/blog", adminBlogRoutes);
 app.use("/api/admin/orders", adminOrdersRoutes);
+app.use("/api/admin/razorpay", razorpayRoute);
+app.use("/api/admin/shiprocket", shiprocketRoute);
 
 
 
