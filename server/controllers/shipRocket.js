@@ -1,4 +1,6 @@
 import redisClient from "../config/redisClient.js";
+import dotenv from "dotenv";
+dotenv.config();
 
 const SHIPROCKET_API_URL = "https://apiv2.shiprocket.in/v1/external";
 
