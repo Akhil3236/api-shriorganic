@@ -216,6 +216,8 @@ export const createShiprocketOrder = async (req, res) => {
             });
         }
 
+        console.log(`Using Shiprocket token for order creation (length: ${token.length})`);
+
         const response = await fetch(`${SHIPROCKET_API_URL}/orders/create/adhoc`, {
             method: "POST",
             headers: {
@@ -270,6 +272,8 @@ export const trackShipment = async (req, res) => {
             });
         }
 
+        console.log(`Using Shiprocket token for tracking (length: ${token.length})`);
+
         const response = await fetch(`${SHIPROCKET_API_URL}/courier/track/shipment/${shipmentId}`, {
             method: "GET",
             headers: {
@@ -314,7 +318,10 @@ export const getAllShipments = async (req, res) => {
         const token = await getShiprocketToken();
         if (!token) return res.status(401).json({ success: false, message: "Unauthorized (Shiprocket login failed)" });
 
-        const response = await fetch(`${SHIPROCKET_API_URL}/shipments`, {
+        console.log(`Using Shiprocket token (length: ${token.length}, prefix: ${token.substring(0, 10)}...)`);
+
+        // In Shiprocket v2, listing shipments is primarily done via the orders endpoint
+        const response = await fetch(`${SHIPROCKET_API_URL}/orders`, {
             method: "GET",
             headers: {
                 "Accept": "application/json",
@@ -332,11 +339,11 @@ export const getAllShipments = async (req, res) => {
             });
         } else {
             const text = await response.text();
-            console.error("Shiprocket Get Shipments Error (Non-JSON):", text);
+            console.error("Shiprocket Get Orders Error (Non-JSON):", text);
             res.status(response.status).json({
                 success: false,
-                message: "Shiprocket returned non-JSON response",
-                error: text.substring(0, 200)
+                message: "Shiprocket returned non-JSON response (Possible 403 Forbidden or Invalid Endpoint)",
+                error: text.substring(0, 500)
             });
         }
     } catch (error) {
