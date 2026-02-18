@@ -44,7 +44,7 @@ router.post(
                         if (shiprocketResponse && shiprocketResponse.order_id) {
                             order.shiprocketOrderId = shiprocketResponse.order_id;
                             order.shiprocketShipmentId = shiprocketResponse.shipment_id;
-                            order.orderStatus = "shipped"; // Optional: update status
+                            order.orderStatus = "Order Placed"; // Optional: update status
                             await order.save();
                             console.log("Shiprocket Order Created Successfully:", shiprocketResponse.order_id);
                         }
