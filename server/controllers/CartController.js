@@ -555,3 +555,39 @@ export const updateCartItemSize = async (req, res) => {
         });
     }
 };
+
+
+// to clear cart
+export const clearCart = async (req, res) => {
+    try {
+        const cacheKey = `cart:${req.user._id}`;
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({
+                sucess: false,
+                message: "User not found"
+            })
+        }
+        const cart = await Cart.findOne({ user: user._id });
+        if (!cart) {
+            return res.status(200).json({
+                sucess: true,
+                cart: { cartItems: [], totalAmount: 0 }
+            })
+        }
+        cart.cartItems = [];
+        cart.totalAmount = 0;
+        await cart.save();
+        await redisClient.del(cacheKey);
+        res.status(200).json({
+            sucess: true,
+            message: "Cart cleared successfully",
+            cart
+        })
+    } catch (error) {
+        res.status(400).json({
+            sucess: false,
+            message: error.message
+        })
+    }
+}
