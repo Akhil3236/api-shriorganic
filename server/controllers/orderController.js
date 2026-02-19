@@ -461,27 +461,6 @@ export const verifyPayment = async (req, res) => {
             .digest("hex");
 
         if (expectedSignature === razorpay_signature) {
-
-            // Payment Verification Successful
-            const order = await Order.findById(orderId);
-
-            if (!order) {
-                return res.status(404).json({
-                    success: false,
-                    message: "Order not found"
-                });
-            }
-
-            console.log(order);
-
-            // Update order status
-            order.paymentstatus = "Paid";
-
-            // Optionally save the Payment ID for reference
-            // order.transactionId = razorpay_payment_id; 
-
-            await order.save();
-
             res.status(200).json({
                 success: true,
                 message: "Payment verified and order updated"
