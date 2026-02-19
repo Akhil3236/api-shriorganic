@@ -286,7 +286,7 @@ export const deleteOrder = async (req, res) => {
 // to get all the orders for admin [Admin]
 export const getAllOrders = async (req, res) => {
     try {
-        const orders = await Order.find({ is_deleted: false }).populate("cartItems.product").populate("user");
+        const orders = await Order.find({ is_deleted: false }).sort({ createdAt: -1 }).populate("cartItems.product").populate("user");
         res.status(200).json({
             success: true,
             message: "Orders fetched successfully",

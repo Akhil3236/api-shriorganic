@@ -162,7 +162,7 @@ export const getproduct = async (req, res) => {
 export const getallproducts = async (req, res) => {
     try {
         const products = await Product.find()
-            .select("name images is_certified category product_description product_details sizes isActive reviews");
+            .select("name images is_certified category product_description product_details sizes isActive reviews skuId");
 
         const productsWithPrice = products.map(product => {
             const productObj = product.toObject();

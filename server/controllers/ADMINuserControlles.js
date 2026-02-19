@@ -7,17 +7,17 @@ import redisClient from "../config/redisClient.js";
 export const getusers = async (req, res) => {
     try {
 
-        // const cacheKey = `users:${req.admin.id}`;
-        // const cachedUsers = await redisClient.get(cacheKey);
-        // if (cachedUsers) {
-        //     return res.status(200).json({
-        //         success: true,
-        //         message: "List of all the users details",
-        //         data: JSON.parse(cachedUsers)
-        //     });
-        // }
+        const cacheKey = `users:${req.admin.id}`;
+        const cachedUsers = await redisClient.get(cacheKey);
+        if (cachedUsers) {
+            return res.status(200).json({
+                success: true,
+                message: "List of all the users details",
+                data: JSON.parse(cachedUsers)
+            });
+        }
 
-        const allUsers = await User.find({ is_deleted: false }).select("-Password").lean();
+        const allUsers = await User.find({ is_deleted: false }).sort({ createdAt: -1 }).select("-Password").lean();
 
         // Aggregate order stats per user
         const orderStats = await Order.aggregate([
@@ -58,6 +58,8 @@ export const getusers = async (req, res) => {
 
     } catch (error) {
 
+        console.log(error);
+        
         res.status(500).json({
             success: false,
             error: error,
